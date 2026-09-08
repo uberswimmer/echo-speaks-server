@@ -26,31 +26,34 @@ Supported image platforms are `linux/amd64` and `linux/arm64`.
 
 ## Persistent data
 
-Echo Speaks stores `es_config.json`, `session.json`, and logs under the container user's home directory. With this image that is `/root`.
+Echo Speaks stores `es_config.json`, `session.json`, and logs under the container user's home directory. This image sets `HOME=/mnt/es-data`, so those files are written to `/mnt/es-data`.
 
-Always mount persistent storage at `/root`. Replacing or updating the container without preserving `/root` can discard authentication and configuration data.
+Mount persistent storage at `/mnt/es-data`. For the existing deployment this is:
 
-Example Compose service:
-
-```yaml
-services:
-  echo-speaks-server:
-    image: ghcr.io/uberswimmer/echo-speaks-server:latest
-    restart: unless-stopped
-    ports:
-      - "8091:8091"
-    volumes:
-      - ./echo-speaks-data:/root
-    environment:
-      - hubPlatform=Hubitat
-      - useHeroku=false
+```text
+/home/docker/EchoSpeaks:/mnt/es-data
 ```
 
-Preserve any additional environment variables, labels, network settings, port mappings, and volume paths from the existing deployment.
+This allows Watchtower to replace the container without losing authentication or configuration data.
+
+Example Docker creation command:
+
+```bash
+docker create --name=Echo-Speaks-Server \
+  -p 8091:8091 \
+  -e ipAddress=192.168.1.15 \
+  -v /home/docker/EchoSpeaks:/mnt/es-data \
+  --restart unless-stopped \
+  ghcr.io/uberswimmer/echo-speaks-server:latest
+```
+
+`PUID` and `PGID` environment variables are not consumed by the upstream Echo Speaks Server image and therefore do not change the process UID/GID. They may be left in an existing container definition harmlessly, but are not required by this image.
+
+Preserve any additional environment variables, labels, network settings, port mappings, and Watchtower labels from the existing deployment.
 
 ## Watchtower
 
-Watchtower can automatically update the container after it is running from the GHCR `latest` image. It cannot turn a locally built image or an image from a different registry/repository into this image automatically, so switching the container to the GHCR image is a one-time manual deployment step.
+Once the container is running from `ghcr.io/uberswimmer/echo-speaks-server:latest`, Watchtower can automatically update it when a new `latest` digest is published.
 
 If the GHCR package is private, Docker and Watchtower must be authenticated to `ghcr.io`. If the package is public, pulls can be anonymous.
 
