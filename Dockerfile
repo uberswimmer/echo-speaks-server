@@ -23,6 +23,11 @@ RUN node scripts/apply-cookie-refresh-fixes.js \
 
 LABEL org.opencontainers.image.source="https://github.com/uberswimmer/echo-speaks-server"
 
+# Echo Speaks stores config/session data under os.homedir(). Point HOME at the
+# existing persistent-data convention used by this deployment.
+RUN mkdir -p /mnt/es-data
+ENV HOME=/mnt/es-data
+
 EXPOSE 8091
 ENV hubPlatform="Hubitat"
 ENV useHeroku=false
